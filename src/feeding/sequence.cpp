@@ -1,4 +1,5 @@
 #include "sequence.h"
+#include "./limitter.h"
 #include "./motor.h"
 #include "./servo.h"
 #include <Arduino.h>
@@ -33,6 +34,7 @@ namespace fed::internal
     Step step = Step::Idle;
     Command command = {5000, 5000, 10000};
     unsigned long stepStartedAt = 0;
+    bool motorStoppedByLimitter = false;
 
     //
 
@@ -99,6 +101,20 @@ namespace fed::internal
         return millis() - stepStartedAt >= duration;
     }
 
+    void startMotor(int state)
+    {
+        motorStoppedByLimitter = false;
+        fed::writeMotor(state);
+    }
+
+    void stopMotorByLimitter(const char *side)
+    {
+        if (motorStoppedByLimitter) return;
+        motorStoppedByLimitter = true;
+        fed::writeMotor(0);
+        Serial.printf("Feeding automation: %s limitter contact detected; motor stopped until duration ends.\n", side);
+    }
+
     void startSequence(const Command &next)
     {
         command = next;
@@ -140,12 +156,15 @@ namespace fed::internal
         }
         case Step::StartMotorForward:
         {
-            fed::writeMotor(1);
+            startMotor(1);
             waitFor(Step::WaitMotorForward);
             break;
         }
         case Step::WaitMotorForward:
         {
+            if (fed::readRightLimitter())
+                stopMotorByLimitter("right");
+
             if (hasElapsed(command.stepperMs))
                 enterStep(Step::StopMotorForward);
             break;
@@ -176,12 +195,15 @@ namespace fed::internal
         }
         case Step::StartMotorReverse:
         {
-            fed::writeMotor(-1);
+            startMotor(-1);
             waitFor(Step::WaitMotorReverse);
             break;
         }
         case Step::WaitMotorReverse:
         {
+            if (fed::readLeftLimitter())
+                stopMotorByLimitter("left");
+
             if (hasElapsed(command.stepperMs))
                 enterStep(Step::StopMotorReverse);
             break;

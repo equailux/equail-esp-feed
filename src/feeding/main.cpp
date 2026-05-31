@@ -7,6 +7,7 @@
 #include "ws.h"
 #include "./internal/servo.h"
 #include "./internal/motor.h"
+#include "./internal/limitter.h"
 
 //
 
@@ -35,6 +36,7 @@ namespace fed
     {
         fed::internal::setupServo();
         fed::internal::setupMotor();
+        fed::internal::setupLimitter();
         ws::onEvent("Feed", ws::EventQuery::Create, onCreate);
     }
 
