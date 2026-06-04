@@ -5,7 +5,8 @@
 #include <ArduinoJson.h>
 #include "secrets.h"
 #include "ws.h"
-#include "./internal/servo.h"
+#include "./internal/refiller.h"
+#include "./internal/distributer.h"
 #include "./internal/motor.h"
 #include "./internal/limitter.h"
 
@@ -34,7 +35,8 @@ namespace fed
 
     void setup()
     {
-        fed::internal::setupServo();
+        fed::internal::setupRefillerServo();
+        fed::internal::setupDistributerServo();
         fed::internal::setupMotor();
         fed::internal::setupLimitter();
         ws::onEvent("Feed", ws::EventQuery::Create, onCreate);

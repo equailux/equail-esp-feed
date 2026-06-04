@@ -4,5 +4,5 @@
 
 namespace fed::internal
 {
-    void setupServo();
+    void setupDistributerServo();
 }

@@ -1,7 +1,8 @@
 #include "sequence.h"
 #include "./limitter.h"
 #include "./motor.h"
-#include "./servo.h"
+#include "./refiller.h"
+#include "./distributer.h"
 #include <Arduino.h>
 
 //
@@ -11,25 +12,24 @@ namespace fed::internal
     enum class Step
     {
         Idle,
-        OpenServo1,
-        WaitServo1,
-        CloseServo1,
+        OpenRefiller,
+        WaitRefiller,
+        CloseRefiller,
         StartMotorForward,
         WaitMotorForward,
         StopMotorForward,
-        OpenServo2,
-        WaitServo2,
-        CloseServo2,
+        OpenDistributer,
+        WaitDistributer,
+        CloseDistributer,
         StartMotorReverse,
         WaitMotorReverse,
         StopMotorReverse,
     };
 
-    // writeServo uses 181+ to address servo 2 and applies state % 180.
-    const int servo1OpenInput = 180;
-    const int servo1CloseInput = 0;
-    const int servo2OpenInput = 359;
-    const int servo2CloseInput = 360;
+    const int refillerServoOpenState = 180;
+    const int refillerServoCloseState = 0;
+    const int distributerServoOpenState = 179;
+    const int distributerServoCloseState = 0;
 
     Step step = Step::Idle;
     Command command = {5000, 5000, 10000};
@@ -45,14 +45,14 @@ namespace fed::internal
         case Step::Idle:
             Serial.printf("Feeding automation step: Idle.\n");
             break;
-        case Step::OpenServo1:
-            Serial.printf("Feeding automation step: OpenServo1 (opening servo 1).\n");
+        case Step::OpenRefiller:
+            Serial.printf("Feeding automation step: OpenRefiller (opening refiller servo).\n");
             break;
-        case Step::WaitServo1:
-            Serial.printf("Feeding automation step: WaitServo1 (waiting %lu ms).\n", command.servo1Ms);
+        case Step::WaitRefiller:
+            Serial.printf("Feeding automation step: WaitRefiller (waiting %lu ms).\n", command.servo1Ms);
             break;
-        case Step::CloseServo1:
-            Serial.printf("Feeding automation step: CloseServo1 (closing servo 1).\n");
+        case Step::CloseRefiller:
+            Serial.printf("Feeding automation step: CloseRefiller (closing refiller servo).\n");
             break;
         case Step::StartMotorForward:
             Serial.printf("Feeding automation step: StartMotorForward (starting motor forward).\n");
@@ -63,14 +63,14 @@ namespace fed::internal
         case Step::StopMotorForward:
             Serial.printf("Feeding automation step: StopMotorForward (stopping motor).\n");
             break;
-        case Step::OpenServo2:
-            Serial.printf("Feeding automation step: OpenServo2 (opening servo 2).\n");
+        case Step::OpenDistributer:
+            Serial.printf("Feeding automation step: OpenDistributer (opening distributer servo).\n");
             break;
-        case Step::WaitServo2:
-            Serial.printf("Feeding automation step: WaitServo2 (waiting %lu ms).\n", command.servo2Ms);
+        case Step::WaitDistributer:
+            Serial.printf("Feeding automation step: WaitDistributer (waiting %lu ms).\n", command.servo2Ms);
             break;
-        case Step::CloseServo2:
-            Serial.printf("Feeding automation step: CloseServo2 (closing servo 2).\n");
+        case Step::CloseDistributer:
+            Serial.printf("Feeding automation step: CloseDistributer (closing distributer servo).\n");
             break;
         case Step::StartMotorReverse:
             Serial.printf("Feeding automation step: StartMotorReverse (starting motor reverse).\n");
@@ -121,11 +121,11 @@ namespace fed::internal
         stepStartedAt = millis();
 
         Serial.printf(
-            "Feeding automation started: servo1=%lu, servo2=%lu, stepper=%lu.\n",
+            "Feeding automation started: refiller=%lu, distributer=%lu, stepper=%lu.\n",
             command.servo1Ms,
             command.servo2Ms,
             command.stepperMs);
-        enterStep(Step::OpenServo1);
+        enterStep(Step::OpenRefiller);
     }
 
     void loopSequence()
@@ -136,21 +136,21 @@ namespace fed::internal
         {
             break;
         }
-        case Step::OpenServo1:
+        case Step::OpenRefiller:
         {
-            fed::writeServo(servo1OpenInput);
-            waitFor(Step::WaitServo1);
+            fed::writeRefillerServo(refillerServoOpenState);
+            waitFor(Step::WaitRefiller);
             break;
         }
-        case Step::WaitServo1:
+        case Step::WaitRefiller:
         {
             if (hasElapsed(command.servo1Ms))
-                enterStep(Step::CloseServo1);
+                enterStep(Step::CloseRefiller);
             break;
         }
-        case Step::CloseServo1:
+        case Step::CloseRefiller:
         {
-            fed::writeServo(servo1CloseInput);
+            fed::writeRefillerServo(refillerServoCloseState);
             enterStep(Step::StartMotorForward);
             break;
         }
@@ -172,24 +172,24 @@ namespace fed::internal
         case Step::StopMotorForward:
         {
             fed::writeMotor(0);
-            enterStep(Step::OpenServo2);
+            enterStep(Step::OpenDistributer);
             break;
         }
-        case Step::OpenServo2:
+        case Step::OpenDistributer:
         {
-            fed::writeServo(servo2OpenInput);
-            waitFor(Step::WaitServo2);
+            fed::writeDistributerServo(distributerServoOpenState);
+            waitFor(Step::WaitDistributer);
             break;
         }
-        case Step::WaitServo2:
+        case Step::WaitDistributer:
         {
             if (hasElapsed(command.servo2Ms))
-                enterStep(Step::CloseServo2);
+                enterStep(Step::CloseDistributer);
             break;
         }
-        case Step::CloseServo2:
+        case Step::CloseDistributer:
         {
-            fed::writeServo(servo2CloseInput);
+            fed::writeDistributerServo(distributerServoCloseState);
             enterStep(Step::StartMotorReverse);
             break;
         }
